@@ -1,24 +1,14 @@
 import { useNavigate } from "react-router";
 import logomona from "../../assets/Logo_MonaStudio.webp";
-import api from "../../lib/axios.config";
 import style from "./Login.module.css"
+import LoginUser from "./service";
+import { useState } from "react";
 export default function Login() {
     const navigate = useNavigate()
-
+    const [loader, setLoader] = useState("")
     return <div className={style.container}>
         <img src={logomona} width={1000} />
-        <form className={style.form} onSubmit={async (e) => {
-            e.preventDefault()
-            const fomrData = new FormData(e.currentTarget)
-            const login = await api.post("/auth/login", {
-                mail: fomrData.get("mail"),
-                contrasena: fomrData.get("contrasena")
-            })
-            if (login.status = 200) {
-                navigate("products")
-            }
-            console.log("submit")
-        }}>
+        <form className={style.form} onSubmit={(e) => LoginUser(e, navigate, setLoader)}>
             <div>
                 <label className={style.label}>
                     Mail:
@@ -33,7 +23,14 @@ export default function Login() {
                 <input required type="text" className={style.input} name="contrasena">
                 </input>
             </div>
-            <button>Iniciar sesión</button>
+            {loader ?
+                <button>
+                    {loader}
+                    <span className={style.dots}></span>
+                </button>
+                :
+                <button>Iniciar sesión</button>
+            }
         </form>
     </div>
 }
