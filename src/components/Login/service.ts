@@ -17,6 +17,7 @@ export default async function LoginUser(
             contrasena: fomrData.get("contrasena")
         })
         if (login.status = 200) {
+            localStorage.setItem("tokenMona", login.data.access_token)
             navigate("products")
         }
     } catch (error) {
