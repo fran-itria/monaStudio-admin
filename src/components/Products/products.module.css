@@ -171,3 +171,8 @@
     align-items: center;
     font-weight: bold;
 }
+
+.search button {
+    background-color: transparent;
+    border: none;
+}

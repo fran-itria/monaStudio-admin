@@ -61,12 +61,17 @@ export default function Products() {
         })()
     }, [page])
 
+    const searchProduct = async () => {
+        const product = await api.get(`/products/byName/${search}`)
+        setCopyProducts(product.data)
+    }
+
     useEffect(() => {
-        if (search) {
-            const product = products?.filter(p => p.nombre.includes(search))
-            if (product)
-                setCopyProducts(product)
-        } else setCopyProducts(products)
+        if (!search) {
+            console.log("Reseteando products")
+            console.log(products)
+            setCopyProducts(products)
+        }
     }, [search])
 
     const formatPrice = (value: number | string) =>
@@ -78,10 +83,14 @@ export default function Products() {
 
     return <div style={{ justifyItems: "start", paddingBlock: "20px" }}>
         <p id="init" style={{ color: "#be554b", fontWeight: "bold" }}>Gestión de los productos de Mona Studio</p>
-        <div className={style.search}>
+        <form className={style.search} onSubmit={(e) => {
+            e.preventDefault()
+            searchProduct()
+        }}>
             <p>Buscar producto: </p>
             <input onChange={(e) => setSearch(e.target.value)}></input>
-        </div>
+            <button>🔍</button>
+        </form>
         <table className={style.table}>
             <thead className={style.head}>
                 <tr>
