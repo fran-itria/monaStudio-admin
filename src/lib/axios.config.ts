@@ -11,7 +11,7 @@ const api = axios.create({
 
 api.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem("accessToken");
+        const token = localStorage.getItem("tokenMona");
         if (token) {
             config.headers["Authorization"] = `Bearer ${token}`;
         }
@@ -27,7 +27,7 @@ api.interceptors.response.use(
     (error) => {
         const isLoginRequest = error.config?.url?.includes("/auth/login");
         if (error.response && error.response.status === 401 && !isLoginRequest) {
-            localStorage.removeItem("accessToken");
+            localStorage.removeItem("tokenMona");
             window.location.href = "/";
         }
         if (error.response && error.response.status === 500) {
