@@ -74,6 +74,7 @@
     background-color: #e8efff;
     transition: background-color 0.2s ease;
     color: black;
+    cursor: pointer;
 }
 
 /* PRODUCTO */
@@ -175,4 +176,250 @@
 .search button {
     background-color: transparent;
     border: none;
+}
+
+
+/* --------- MODAL ---------- */
+
+.modal {
+    position: fixed;
+    height: 100vh;
+    width: 100vw;
+    left: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(5px);
+    scrollbar-width: none;
+}
+
+.modalContainer {
+    background-color: #be554b;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    color: #eaf7ef;
+    font-weight: bold;
+    gap: 10px;
+    max-height: 93vh;
+    overflow-y: auto;
+    border-radius: 10px;
+}
+
+.modalContainer label {
+    text-align: start;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal div img {
+    width: 100px;
+    height: 100px;
+    object-fit: fill;
+}
+
+.modalImages {
+    display: flex;
+    flex-direction: column;
+    text-align: start;
+    gap: 10px;
+    background-color: #f9beb0;
+    padding: 10px;
+    border: 1px black solid;
+    border-radius: 10px;
+    color: black;
+}
+
+.modalImages b {
+    color: black;
+    text-decoration: underline 3px;
+}
+
+.images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.images div {
+    position: relative;
+}
+
+.images div:hover {
+    animation: scaleImage forwards 0.5s;
+}
+
+@keyframes scaleImage {
+    from {
+        scale: 1;
+    }
+
+    to {
+        scale: 1.1;
+    }
+}
+
+.images button {
+    border: none;
+    background: #be554b;
+    border-radius: 100%;
+    padding: 5px;
+    position: absolute;
+    right: 7px;
+    top: 7px;
+}
+
+.images button:hover {
+    cursor: pointer;
+}
+
+.images img {
+    background-color: #be554b;
+    padding: 5px;
+    border-radius: 10px;
+}
+
+.modalVaritiesContainer {
+    background-color: #f9beb0;
+    padding: 10px;
+    border: 1px black solid;
+    border-radius: 10px;
+    color: black;
+    text-align: start;
+}
+
+.varities {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.varity {
+    background-color: #be554b;
+    color: black;
+    padding: 10px;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.delete {
+    background-color: rgb(98, 0, 0);
+    border-radius: 10px;
+    border: none;
+    font-weight: bold;
+}
+
+.modalContainer input {
+    background-color: #fffae7;
+    color: black;
+    border: none;
+    border-radius: 10px;
+    padding-left: 10px;
+    font-weight: bold;
+    font-size: 15px;
+    padding-block: 5px;
+}
+
+.modalContainer textarea {
+    background-color: #fffae7;
+    color: black;
+    border: none;
+    border-radius: 10px;
+    padding-left: 10px;
+    font-weight: bold;
+    font-size: 15px;
+    padding-block: 5px;
+    height: 100px;
+}
+
+.categories {
+    display: flex;
+    flex-direction: column;
+    text-align: start;
+}
+
+.categories div {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.modalCategory {
+    display: flex;
+    gap: 5px;
+    background-color: #eda49f;
+    width: fit-content;
+    padding-inline: 10px;
+    color: black;
+    border-radius: 10px;
+}
+
+.modalCategory button {
+    background-color: transparent;
+    border: none;
+    border-radius: 10px;
+    color: black;
+    font-weight: bold;
+}
+
+.categories select {
+    width: fit-content;
+}
+
+.categories b {
+    color: #e5e5e5;
+    font-size: 14px;
+    text-shadow: black 2px 0px;
+}
+
+.save {
+    background: #23834b;
+    border: none;
+    font-weight: bold;
+    border-radius: 10px;
+    font-size: 17px;
+    padding-block: 7px;
+}
+
+button:hover {
+    cursor: pointer;
+}
+
+.dots {
+    display: inline-block;
+    width: 3ch;
+    white-space: nowrap;
+    overflow: hidden;
+    vertical-align: bottom;
+}
+
+.dots::after {
+    content: "";
+    display: inline-block;
+    animation: dots 1s steps(1, end) infinite;
+}
+
+@keyframes dots {
+    0% {
+        content: "";
+    }
+
+    25% {
+        content: ".";
+    }
+
+    50% {
+        content: "..";
+    }
+
+    75% {
+        content: "...";
+    }
+
+    100% {
+        content: "";
+    }
 }
