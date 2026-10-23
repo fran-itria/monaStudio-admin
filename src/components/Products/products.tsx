@@ -48,13 +48,31 @@ export default function Products() {
     const [categories, setCategories] = useState<{ id: string, name: string, active: boolean }[]>()
     const [varities, setVarities] = useState<{ id: string, name: string }[]>()
 
-    const [modal, setModal] = useState<ProductsProps | undefined>(undefined)
+    const [modal, setModal] = useState<
+        Pick<
+            ProductsProps,
+            "id" |
+            "createdAt" |
+            "updatedAt" |
+            "categories" |
+            "description" |
+            "discountedPrice" |
+            "images" |
+            "nombre" |
+            "price" |
+            "productVarities" |
+            "stock" |
+            "active"
+        > & { create?: boolean }
+        | undefined
+    >(undefined)
     const [newVarity, setNewVarity] = useState<{ id: string, stock: number }>({
         id: "",
         stock: 0,
     })
     const [newImages, setNewImages] = useState<File[]>([])
     const [loader, setLoader] = useState<string>("")
+
     useEffect(() => {
         (async () => {
             const categories = await api.get("/categories")
@@ -66,7 +84,7 @@ export default function Products() {
 
     useEffect(() => {
         (async () => {
-            const products = await api.get(`/products?page=${page}`)
+            const products = await api.get(`/products??orderBy=createdAt&page=${page}`)
             if (products.data.length > 0) {
                 setProducts(products.data)
                 setCopyProducts(products.data)
@@ -124,7 +142,32 @@ export default function Products() {
                 <table className={style.table}>
                     <thead className={style.head}>
                         <tr>
-                            <th style={{ width: "40%" }}>Producto</th>
+                            <th style={{ width: "40%" }}>
+                                <div style={{ display: "flex", gap: "20px" }}>
+                                    <p>Producto</p>
+                                    <button
+                                        className={style.save}
+                                        style={{ paddingInline: "4px", paddingBlock: "0px", fontSize: "12px" }}
+                                        onClick={() => setModal({
+                                            create: true,
+                                            id: crypto.randomUUID(),
+                                            active: true,
+                                            categories: [],
+                                            description: "",
+                                            nombre: "",
+                                            price: "0",
+                                            productVarities: [],
+                                            stock: 0,
+                                            images: [],
+                                            discountedPrice: "0",
+                                            createdAt: "",
+                                            updatedAt: ""
+                                        })}
+                                    >
+                                        Agregar producto
+                                    </button>
+                                </div>
+                            </th>
                             <th style={{ textAlign: "center" }}>Precio</th>
                             <th style={{ textAlign: "center" }}>Stock</th>
                             <th style={{ textAlign: "center" }}>Categoría</th>
@@ -310,7 +353,24 @@ export default function Products() {
 
                     {/* ------------------ VARIEDADES ------------------ */}
                     <div className={style.modalVaritiesContainer}>
-                        <p>Variedades</p>
+                        <label>
+                            Stock {"(se calcula solo si se agregan variedades)"}:
+                            <input
+                                disabled={modal.productVarities.length > 0}
+                                defaultValue={modal.stock}
+                                onChange={(e) => {
+                                    setModal(prev => {
+                                        if (!prev) return prev
+                                        return {
+                                            ...prev,
+                                            stock: Number(e.target.value)
+                                        }
+                                    })
+                                }}
+                            >
+                            </input>
+                        </label>
+                        <p>Variedades {"(opcional)"}</p>
                         <div className={style.varities}>
                             {modal.productVarities?.map(varity => (
                                 <div style={{ display: "flex" }} key={varity.id}>
@@ -444,57 +504,106 @@ export default function Products() {
                     </div>
                     <button className={style.delete} style={{ paddingBlock: "7px", fontSize: "17px" }} onClick={() => setModal(undefined)}>Cancelar</button>
                     {!loader ?
-                        <button
-                            className={style.save}
-                            onClick={async () => {
-                                setLoader("Guardando cambios")
-                                const {
-                                    createdAt,
-                                    updatedAt,
-                                    active,
-                                    images,
-                                    productVarities,
-                                    ...data
-                                } = modal
-                                try {
-                                    const imagesProduct = modal.images?.filter(e => e.url.includes("firebasestorage")).map(e => e.url)
-                                    console.log(newImages)
-                                    if (newImages?.length)
-                                        for (const image of newImages) {
-                                            const storageRef = ref(
-                                                storage,
-                                                `Productos/${image.name}`
-                                            )
+                        !modal.create ?
+                            <button
+                                className={style.save}
+                                onClick={async () => {
+                                    setLoader("Guardando cambios")
+                                    const {
+                                        active,
+                                        images,
+                                        productVarities,
+                                        createdAt,
+                                        updatedAt,
+                                        ...data
+                                    } = modal
+                                    try {
+                                        const imagesProduct = modal.images?.filter(e => e.url.includes("firebasestorage")).map(e => e.url)
+                                        if (newImages?.length)
+                                            for (const image of newImages) {
+                                                const storageRef = ref(
+                                                    storage,
+                                                    `Productos/${image.name}`
+                                                )
 
-                                            await uploadBytes(storageRef, image, { contentType: image.type })
+                                                await uploadBytes(storageRef, image, { contentType: image.type })
 
-                                            const url = await getDownloadURL(storageRef)
-                                            imagesProduct?.push(url)
-                                        }
-                                    console.log(imagesProduct)
-                                    const patch = await api.patch("products", {
-                                        ...data,
-                                        price: Number(data.price),
-                                        discountedPrice: Number(data.discountedPrice),
-                                        image: imagesProduct,
-                                        varities: modal.productVarities.map(varity => ({ id: varity.varity?.id, productVarityId: varity.id, stock: varity.stock, active: varity.active }))
-                                    })
-                                    const productUpdate = await api.get(`products/byName/${patch.data.nombre}`)
-                                    if (productUpdate.data) {
-                                        setCopyProducts(prev => {
-                                            if (!prev) return prev
-                                            return prev?.map(product => product.id == patch.data.id ? productUpdate.data[0] : product)
+                                                const url = await getDownloadURL(storageRef)
+                                                imagesProduct?.push(url)
+                                            }
+                                        const patch = await api.patch("products", {
+                                            ...data,
+                                            price: Number(data.price),
+                                            discountedPrice: Number(data.discountedPrice),
+                                            image: imagesProduct,
+                                            varities: modal.productVarities.map(varity => ({ id: varity.varity?.id, productVarityId: varity.id, stock: varity.stock, active: varity.active }))
                                         })
-                                        setModal(undefined)
+                                        const productUpdate = await api.get(`products/byName/${patch.data.nombre}`)
+                                        if (productUpdate.data) {
+                                            setCopyProducts(prev => {
+                                                if (!prev) return prev
+                                                return prev?.map(product => product.id == patch.data.id ? productUpdate.data[0] : product)
+                                            })
+                                            setModal(undefined)
+                                            setLoader("")
+                                        }
+                                    } catch (error) {
                                         setLoader("")
                                     }
-                                } catch (error) {
-                                    setLoader("")
-                                }
-                            }}
-                        >
-                            Guardar cambios
-                        </button>
+                                }}
+                            >
+                                Guardar cambios
+                            </button>
+                            :
+                            <button
+                                className={style.save}
+                                onClick={async () => {
+                                    setLoader("Creando producto")
+                                    const {
+                                        id,
+                                        create,
+                                        active,
+                                        images,
+                                        productVarities,
+                                        createdAt,
+                                        updatedAt,
+                                        ...data
+                                    } = modal
+                                    try {
+                                        const imagesProduct = modal.images?.filter(e => e.url.includes("firebasestorage")).map(e => e.url)
+                                        if (newImages?.length)
+                                            for (const image of newImages) {
+                                                const storageRef = ref(
+                                                    storage,
+                                                    `Productos/${image.name}`
+                                                )
+
+                                                await uploadBytes(storageRef, image, { contentType: image.type })
+
+                                                const url = await getDownloadURL(storageRef)
+                                                imagesProduct?.push(url)
+                                            }
+                                        await api.post("products", {
+                                            ...data,
+                                            price: Number(data.price),
+                                            discountedPrice: Number(data.discountedPrice),
+                                            image: imagesProduct,
+                                            varities: modal.productVarities.map(varity => ({ id: varity.varity?.id, productVarityId: varity.id, stock: varity.stock, active: varity.active }))
+                                        })
+                                        const products = await api.get(`/products??orderBy=createdAt&page=${page}`)
+                                        if (products.data.length > 0) {
+                                            setProducts(products.data)
+                                            setCopyProducts(products.data)
+                                        }
+                                        setModal(undefined)
+                                        setLoader("")
+                                    } catch (error) {
+                                        setLoader("")
+                                    }
+                                }}
+                            >
+                                Crear producto
+                            </button>
                         :
                         <button>
                             {loader}
