@@ -73,14 +73,22 @@ export default function Products() {
     const [newImages, setNewImages] = useState<File[]>([])
     const [loader, setLoader] = useState<string>("")
 
+    const [modalVarity, setModalVarity] = useState<boolean>(false)
+    const [modalCategory, setModalCategory] = useState<boolean>(false)
+
     useEffect(() => {
         (async () => {
-            const categories = await api.get("/categories")
-            const varities = await api.get("/varities")
-            setCategories(categories.data)
-            setVarities(varities.data[0])
+            console.log(modalCategory, modalVarity)
+            if (!modalCategory) {
+                const categories = await api.get("/categories")
+                setCategories(categories.data)
+            }
+            if (!modalVarity) {
+                const varities = await api.get("/varities")
+                setVarities(varities.data[0])
+            }
         })()
-    }, [])
+    }, [modalVarity, modalCategory])
 
     useEffect(() => {
         (async () => {
@@ -131,6 +139,7 @@ export default function Products() {
         <>
             <div style={{ justifyItems: "start", paddingBlock: "20px" }}>
                 <p id="init" style={{ color: "#be554b", fontWeight: "bold" }}>Gestión de los productos de Mona Studio</p>
+                <p style={{ color: "#be554b", fontWeight: "bold" }}>Antes de crear o modificar un producto, se debe tener registrado la variedad o categoría del mismo</p>
                 <form className={style.search} onSubmit={(e) => {
                     e.preventDefault()
                     searchProduct()
@@ -143,7 +152,7 @@ export default function Products() {
                     <thead className={style.head}>
                         <tr>
                             <th style={{ width: "40%" }}>
-                                <div style={{ display: "flex", gap: "20px" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between" }}>
                                     <p>Producto</p>
                                     <button
                                         className={style.save}
@@ -165,6 +174,20 @@ export default function Products() {
                                         })}
                                     >
                                         Agregar producto
+                                    </button>
+                                    <button
+                                        className={style.save}
+                                        style={{ paddingInline: "4px", paddingBlock: "0px", fontSize: "12px" }}
+                                        onClick={() => { setModalVarity(prev => !prev) }}
+                                    >
+                                        Agregar variedad
+                                    </button>
+                                    <button
+                                        className={style.save}
+                                        style={{ paddingInline: "4px", paddingBlock: "0px", fontSize: "12px" }}
+                                        onClick={() => { setModalCategory(prev => !prev) }}
+                                    >
+                                        Agregar categoría
                                     </button>
                                 </div>
                             </th>
@@ -234,6 +257,37 @@ export default function Products() {
                 </div>
             </div>
 
+            {(modalVarity || modalCategory) &&
+                <div className={style.modal}>
+                    <form className={style.modalContainer} onSubmit={async (e) => {
+                        e.preventDefault()
+                        const data = new FormData(e.currentTarget)
+                        const name = data.get("varity")
+                        try {
+                            if (modalVarity) {
+                                await api.post("/varities", { name })
+                                setModalVarity(false)
+                            }
+                            if (modalCategory) {
+                                await api.post("/categories", { name })
+                                setModalCategory(false)
+                            }
+                        } catch (error) {
+                            setModalCategory(false)
+                            setModalVarity(false)
+                        }
+                    }}>
+                        <label style={{ display: "flex", gap: "5px" }}>
+                            Nombre de la {modalCategory ? "categoría" : "variedad"}
+                            <input name="varity"></input>
+                        </label>
+                        <button className={style.delete} type="button" onClick={() => {
+                            modalCategory ? setModalCategory(false) : setModalVarity(false)
+                        }}>Cancelar</button>
+                        <button className={style.save}>Crear {modalCategory ? "categoría" : "variedad"}</button>
+                    </form>
+                </div>
+            }
             {modal && <div className={style.modal}>
                 <div className={style.modalContainer}>
                     <label>
