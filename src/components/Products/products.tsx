@@ -168,7 +168,7 @@ export default function Products() {
 
                                 <td>
                                     <div className={style.categories}>
-                                        {product.categories.map((cat) => (
+                                        {product.categories?.map((cat) => (
                                             <span key={cat.id} className={style.category}>
                                                 {cat.name}
                                             </span>
@@ -479,10 +479,11 @@ export default function Products() {
                                         image: imagesProduct,
                                         varities: modal.productVarities.map(varity => ({ id: varity.varity?.id, productVarityId: varity.id, stock: varity.stock, active: varity.active }))
                                     })
-                                    if (patch.data) {
+                                    const productUpdate = await api.get(`products/byName/${patch.data.nombre}`)
+                                    if (productUpdate.data) {
                                         setCopyProducts(prev => {
                                             if (!prev) return prev
-                                            return prev?.map(product => product.id == patch.data.id ? { ...patch.data, productVarities: patch.data.varities, images: patch.data.image } : product)
+                                            return prev?.map(product => product.id == patch.data.id ? productUpdate.data[0] : product)
                                         })
                                         setModal(undefined)
                                         setLoader("")
