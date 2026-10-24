@@ -7,7 +7,7 @@ export default function Login() {
     const navigate = useNavigate()
     const [loader, setLoader] = useState("")
     return <div className={style.container}>
-        <img src={logomona} width={1000} />
+        <img src={logomona} className={style.image} />
         <form className={style.form} onSubmit={(e) => LoginUser(e, navigate, setLoader)}>
             <div>
                 <label className={style.label}>

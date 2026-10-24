@@ -1,5 +1,5 @@
 .search {
-    margin-top: 20px;
+    margin-top: 10px;
     margin-bottom: 5px;
     color: #be554b;
     font-weight: bold;
@@ -17,10 +17,32 @@
     font-weight: bold;
 }
 
+.tableContainer {
+    width: 100%;
+    min-width: 0;
+}
+
 .table {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0 8px;
+}
+
+.productHeader {
+    width: 40%;
+}
+
+
+
+.addButtons {
+    display: flex;
+    justify-content: space-between;
+}
+
+.addButtons button {
+    padding-inline: 4px;
+    font-size: 12px;
+    font-weight: bold;
 }
 
 /* ENCABEZADO */
@@ -339,6 +361,11 @@
     display: flex;
     flex-direction: column;
     text-align: start;
+    background-color: #f9beb0;
+    padding: 10px;
+    border: 1px black solid;
+    border-radius: 10px;
+    color: black;
 }
 
 .categories div {
@@ -370,9 +397,9 @@
 }
 
 .categories b {
-    color: #e5e5e5;
+    color: black;
     font-size: 14px;
-    text-shadow: black 2px 0px;
+    text-shadow: white 2px 0px;
 }
 
 .save {
@@ -421,5 +448,37 @@ button:hover {
 
     100% {
         content: "";
+    }
+}
+
+
+@media (max-width: 768px) {
+    .productHeader {
+        min-width: 327px;
+    }
+
+    .tableContainer {
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .table {
+        width: 100%;
+        min-width: 850px;
+    }
+
+    .addButtons {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .addButtons button {
+        padding-block: 3px;
+    }
+
+    .modal {
+        width: 100%;
+        height: 100%;
     }
 }

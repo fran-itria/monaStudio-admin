@@ -137,9 +137,9 @@ export default function Products() {
 
     return (
         <>
-            <div style={{ justifyItems: "start", paddingBlock: "20px" }}>
+            <div style={{ justifyItems: "start", padding: "20px" }}>
                 <p id="init" style={{ color: "#be554b", fontWeight: "bold" }}>Gestión de los productos de Mona Studio</p>
-                <p style={{ color: "#be554b", fontWeight: "bold" }}>Antes de crear o modificar un producto, se debe tener registrado la variedad o categoría del mismo</p>
+                <p style={{ color: "#be554b", fontWeight: "bold", textAlign: "start", marginTop: "10px" }}>Antes de crear o modificar un producto, se debe tener registrado la variedad o categoría del mismo</p>
                 <form className={style.search} onSubmit={(e) => {
                     e.preventDefault()
                     searchProduct()
@@ -148,106 +148,105 @@ export default function Products() {
                     <input onChange={(e) => setSearch(e.target.value)}></input>
                     <button>🔍</button>
                 </form>
-                <table className={style.table}>
-                    <thead className={style.head}>
-                        <tr>
-                            <th style={{ width: "40%" }}>
-                                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                                    <p>Producto</p>
-                                    <button
-                                        className={style.save}
-                                        style={{ paddingInline: "4px", paddingBlock: "0px", fontSize: "12px" }}
-                                        onClick={() => setModal({
-                                            create: true,
-                                            id: crypto.randomUUID(),
-                                            active: true,
-                                            categories: [],
-                                            description: "",
-                                            nombre: "",
-                                            price: "0",
-                                            productVarities: [],
-                                            stock: 0,
-                                            images: [],
-                                            discountedPrice: "0",
-                                            createdAt: "",
-                                            updatedAt: ""
-                                        })}
-                                    >
-                                        Agregar producto
-                                    </button>
-                                    <button
-                                        className={style.save}
-                                        style={{ paddingInline: "4px", paddingBlock: "0px", fontSize: "12px" }}
-                                        onClick={() => { setModalVarity(prev => !prev) }}
-                                    >
-                                        Agregar variedad
-                                    </button>
-                                    <button
-                                        className={style.save}
-                                        style={{ paddingInline: "4px", paddingBlock: "0px", fontSize: "12px" }}
-                                        onClick={() => { setModalCategory(prev => !prev) }}
-                                    >
-                                        Agregar categoría
-                                    </button>
-                                </div>
-                            </th>
-                            <th style={{ textAlign: "center" }}>Precio</th>
-                            <th style={{ textAlign: "center" }}>Stock</th>
-                            <th style={{ textAlign: "center" }}>Categoría</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        {copyProducts?.length ? copyProducts?.map((product) => (
-                            <tr key={product.id} className={style.cell} onClick={() => {
-                                console.log(product)
-                                setModal(product)
-                            }}>
-                                <td>
-                                    <div className={style.product}>
-                                        <img
-                                            src={product.images && product.images[0]?.url}
-                                            alt={product.nombre}
-                                        />
-                                        <p>{product.nombre}</p>
+                <div className={style.tableContainer}>
+                    <table className={style.table}>
+                        <thead className={style.head}>
+                            <tr>
+                                <th className={style.productHeader}>
+                                    <div className={style.addButtons}>
+                                        <p>Producto</p>
+                                        <button
+                                            className={style.save}
+                                            onClick={() => setModal({
+                                                create: true,
+                                                id: crypto.randomUUID(),
+                                                active: true,
+                                                categories: [],
+                                                description: "",
+                                                nombre: "",
+                                                price: "0",
+                                                productVarities: [],
+                                                stock: 0,
+                                                images: [],
+                                                discountedPrice: "0",
+                                                createdAt: "",
+                                                updatedAt: ""
+                                            })}
+                                        >
+                                            Agregar producto
+                                        </button>
+                                        <button
+                                            className={style.save}
+                                            onClick={() => { setModalVarity(prev => !prev) }}
+                                        >
+                                            Agregar variedad
+                                        </button>
+                                        <button
+                                            className={style.save}
+                                            onClick={() => { setModalCategory(prev => !prev) }}
+                                        >
+                                            Agregar categoría
+                                        </button>
                                     </div>
-                                </td>
-
-                                <td>
-                                    <div className={style.prices}>
-                                        <p>
-                                            <span>Original:</span>
-                                            {formatPrice(product.price)}
-                                        </p>
-                                        <p>
-                                            <span>Descuento:</span>
-                                            {formatPrice(product.discountedPrice || 0)}
-                                        </p>
-                                    </div>
-                                </td>
-
-                                <td>
-                                    <span className={style.stock}>
-                                        {product.stock} unidades
-                                    </span>
-                                </td>
-
-                                <td>
-                                    <div className={style.categories}>
-                                        {product.categories?.map((cat) => (
-                                            <span key={cat.id} className={style.category}>
-                                                {cat.name}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </td>
+                                </th>
+                                <th style={{ textAlign: "center" }}>Precio</th>
+                                <th style={{ textAlign: "center" }}>Stock</th>
+                                <th style={{ textAlign: "center" }}>Categoría</th>
                             </tr>
-                        ))
-                            :
-                            <td style={{ textAlign: "center", color: "#be554b", fontWeight: "bold" }}>No se encontraron productos con ese nombre</td>
-                        }
-                    </tbody>
-                </table>
+                        </thead>
+
+                        <tbody>
+                            {copyProducts?.length ? copyProducts?.map((product) => (
+                                <tr key={product.id} className={style.cell} onClick={() => {
+                                    console.log(product)
+                                    setModal(product)
+                                }}>
+                                    <td>
+                                        <div className={style.product}>
+                                            <img
+                                                src={product.images && product.images[0]?.url}
+                                                alt={product.nombre}
+                                            />
+                                            <p>{product.nombre}</p>
+                                        </div>
+                                    </td>
+
+                                    <td>
+                                        <div className={style.prices}>
+                                            <p>
+                                                <span>Original:</span>
+                                                {formatPrice(product.price)}
+                                            </p>
+                                            <p>
+                                                <span>Descuento:</span>
+                                                {formatPrice(product.discountedPrice || 0)}
+                                            </p>
+                                        </div>
+                                    </td>
+
+                                    <td>
+                                        <span className={style.stock}>
+                                            {product.stock} unidades
+                                        </span>
+                                    </td>
+
+                                    <td>
+                                        <div className={style.categories}>
+                                            {product.categories?.map((cat) => (
+                                                <span key={cat.id} className={style.category}>
+                                                    {cat.name}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))
+                                :
+                                <td style={{ textAlign: "center", color: "#be554b", fontWeight: "bold" }}>No se encontraron productos con ese nombre</td>
+                            }
+                        </tbody>
+                    </table>
+                </div>
                 <div className={style.pagination}>
                     <button disabled={page == "1"} onClick={() => {
                         setNextDisabled(false)

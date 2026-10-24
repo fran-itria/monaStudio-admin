@@ -7,6 +7,12 @@
     align-items: center;
 }
 
+@media (max-width: 768px) {
+    .image {
+        width: 400px;
+    }
+}
+
 .form {
     background-color: #fffbe8;
     padding: 20px;
