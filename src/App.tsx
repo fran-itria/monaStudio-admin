@@ -4,6 +4,7 @@ import { Route, Routes } from "react-router";
 import Products from './components/Products/products';
 import Layout from './components/Layout/Layout';
 import Catalog from './components/Catalog/Catalog';
+import Orders from './components/Orders/Orders';
 import ProductForm from './components/Products/ProductForm';
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
           <Route path="/products/new" element={<ProductForm />} />
           <Route path="/products/:id" element={<ProductForm />} />
           <Route path="/catalog" element={<Catalog />} />
+          <Route path="/orders" element={<Orders />} />
         </Route>
       </Routes>
     </>
