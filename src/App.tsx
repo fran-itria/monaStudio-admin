@@ -4,6 +4,7 @@ import { Route, Routes } from "react-router";
 import Products from './components/Products/products';
 import Layout from './components/Layout/Layout';
 import Catalog from './components/Catalog/Catalog';
+import ProductForm from './components/Products/ProductForm';
 
 function App() {
   return (
@@ -12,6 +13,8 @@ function App() {
         <Route path="/" element={<Login />} />
         <Route element={<Layout />}>
           <Route path="/products" element={<Products />} />
+          <Route path="/products/new" element={<ProductForm />} />
+          <Route path="/products/:id" element={<ProductForm />} />
           <Route path="/catalog" element={<Catalog />} />
         </Route>
       </Routes>
