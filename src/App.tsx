@@ -6,6 +6,7 @@ import Layout from './components/Layout/Layout';
 import Catalog from './components/Catalog/Catalog';
 import Orders from './components/Orders/Orders';
 import ProductForm from './components/Products/ProductForm';
+import OrderForm from './components/Orders/OrderForm';
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
           <Route path="/products/:id" element={<ProductForm />} />
           <Route path="/catalog" element={<Catalog />} />
           <Route path="/orders" element={<Orders />} />
+          <Route path="/orders/new" element={<OrderForm />} />
         </Route>
       </Routes>
     </>
