@@ -1,0 +1,111 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    color: black;
+    text-align: start;
+}
+
+.container label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 14px;
+}
+
+.help {
+    font-weight: normal;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: #fcc7b9;
+    border-radius: 10px;
+    padding: 10px;
+    border: 1px solid #eda49f;
+}
+
+.itemHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #be554b;
+}
+
+.item select,
+.item input[type="number"] {
+    background-color: white;
+    color: black;
+    border: 1px solid #eda49f;
+    border-radius: 10px;
+    padding: 6px 10px;
+    font-weight: bold;
+    font-size: 15px;
+}
+
+.modes {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.mode {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 6px !important;
+    cursor: pointer;
+}
+
+.mode input {
+    accent-color: #be554b;
+}
+
+.mode:has(input:disabled) {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.remove {
+    background: rgb(98, 0, 0);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 12px;
+    padding: 4px 8px;
+}
+
+.add {
+    background: #be554b;
+    color: #fff9e7;
+    border: 2px dashed #fff9e7;
+    border-radius: 10px;
+    font-weight: bold;
+    font-size: 15px;
+    padding: 8px;
+}
+
+.summary {
+    background: #f9beb0;
+    border-radius: 10px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 14px;
+    font-weight: normal;
+}
+
+.saving {
+    color: #23834b;
+    font-weight: bold;
+}
+
+.warning {
+    color: rgb(150, 0, 0);
+    font-weight: bold;
+}
