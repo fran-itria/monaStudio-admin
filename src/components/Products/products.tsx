@@ -1,671 +1,230 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { Link } from "react-router"
+import axios from "axios"
 import api from "../../lib/axios.config"
 import style from "./products.module.css";
-import { storage } from "../../lib/firebase.config";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import type { Product } from "../../lib/types";
+import { errorMessage, formatPrice } from "../../lib/format";
 
-interface ProductsProps {
-    id: string,
-    createdAt: string,
-    updatedAt: string,
-    nombre: string,
-    price: string,
-    stock: number,
-    discountedPrice?: null | string,
-    description: string,
-    active: boolean,
-    relatedProducts?: null,
-    complementProducts?: null,
-    section?: null,
-    categories: {
-        id: string,
-        name: string,
-        active: boolean
-    }[],
-    images?: {
-        id: string,
-        productId: string,
-        url: string
-    }[],
-    productVarities:
-    {
-        id: string,
-        stock: number,
-        active: boolean,
-        varity?: {
-            id: string,
-            name: string
-        }
-    }[]
-}
+const LIMIT = 20
+
+type Tab = "inCatalog" | "outCatalog"
 
 export default function Products() {
-    const [products, setProducts] = useState<ProductsProps[]>()
-    const [copyProducts, setCopyProducts] = useState<ProductsProps[]>()
-    const [search, setSearch] = useState<string>()
-    const [page, setPage] = useState<string>("1")
-    const [nextDisable, setNextDisabled] = useState(false)
-    const [categories, setCategories] = useState<{ id: string, name: string, active: boolean }[]>()
-    const [varities, setVarities] = useState<{ id: string, name: string }[]>()
-
-    const [modal, setModal] = useState<
-        Pick<
-            ProductsProps,
-            "id" |
-            "createdAt" |
-            "updatedAt" |
-            "categories" |
-            "description" |
-            "discountedPrice" |
-            "images" |
-            "nombre" |
-            "price" |
-            "productVarities" |
-            "stock" |
-            "active"
-        > & { create?: boolean }
-        | undefined
-    >(undefined)
-    const [newVarity, setNewVarity] = useState<{ id: string, stock: number }>({
-        id: "",
-        stock: 0,
-    })
-    const [newImages, setNewImages] = useState<File[]>([])
-    const [loader, setLoader] = useState<string>("")
-
-    const [modalVarity, setModalVarity] = useState<boolean>(false)
-    const [modalCategory, setModalCategory] = useState<boolean>(false)
+    const [tab, setTab] = useState<Tab>("inCatalog")
+    const [products, setProducts] = useState<Product[]>()
+    const [search, setSearch] = useState("")
+    const [page, setPage] = useState(1)
+    const [hasNext, setHasNext] = useState(true)
+    const [loadingList, setLoadingList] = useState(false)
+    const [allProducts, setAllProducts] = useState<Product[]>()
+    const [deletingId, setDeletingId] = useState("")
+    const [notice, setNotice] = useState<{ type: "ok" | "error", text: string }>()
+    const listTop = useRef<HTMLDivElement>(null)
+    const scrollAfterLoad = useRef(false)
 
     useEffect(() => {
         (async () => {
-            console.log(modalCategory, modalVarity)
-            if (!modalCategory) {
-                const categories = await api.get("/categories")
-                setCategories(categories.data)
-            }
-            if (!modalVarity) {
-                const varities = await api.get("/varities")
-                setVarities(varities.data[0])
-            }
-        })()
-    }, [modalVarity, modalCategory])
-
-    useEffect(() => {
-        (async () => {
-            const products = await api.get(`/products??orderBy=createdAt&page=${page}`)
-            if (products.data.length > 0) {
-                setProducts(products.data)
-                setCopyProducts(products.data)
-                document.getElementById("init")?.scrollIntoView({
-                    behavior: "smooth",
-                    block: "start"
-                });
-            } else {
-                setNextDisabled(true)
-                setPage(prev => String(Number(prev) - 1))
+            setLoadingList(true)
+            try {
+                const res = await api.get<Product[]>(`/products?orderBy=createdAt&page=${page}&limit=${LIMIT}&active=${tab}`)
+                if (!res.data.length && page > 1) {
+                    // La página anterior era justo la última: volvemos y deshabilitamos "Siguiente"
+                    setHasNext(false)
+                    setPage(page - 1)
+                    return
+                }
+                setProducts(res.data)
+                setHasNext(res.data.length === LIMIT)
+                if (scrollAfterLoad.current) {
+                    scrollAfterLoad.current = false
+                    listTop.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+                }
+            } catch {
+                setProducts([])
+            } finally {
+                setLoadingList(false)
             }
         })()
-    }, [page])
+    }, [page, tab])
 
-    const searchProduct = async () => {
-        const product = await api.get(`/products/byName/${search}`)
-        setCopyProducts(product.data)
+    /** Todos los productos de la pestaña actual, para buscar. Se cargan la primera vez que se busca. */
+    const loadAllProducts = async () => {
+        if (allProducts) return
+        try {
+            const all = await api.get<Product[]>(`/products?limit=500&orderBy=nombre&direction=ASC&active=${tab}`)
+            setAllProducts(all.data)
+        } catch {
+            setAllProducts([])
+        }
     }
 
-    useEffect(() => {
-        if (!search) {
-            console.log("Reseteando products")
-            console.log(products)
-            setCopyProducts(products)
+    const changeTab = (next: Tab) => {
+        if (next === tab) return
+        setTab(next)
+        setPage(1)
+        setHasNext(true)
+        setProducts(undefined)
+        setAllProducts(undefined)
+        setSearch("")
+    }
+
+    const removeFromLists = (id: string) => {
+        setProducts(prev => prev?.filter(p => p.id !== id))
+        setAllProducts(prev => prev?.filter(p => p.id !== id))
+    }
+
+    const deleteProduct = async (product: Product) => {
+        if (!confirm(`¿Eliminar "${product.nombre}"?\n\nSe borran también sus variedades e imágenes. No se puede deshacer.`)) return
+        setDeletingId(product.id)
+        setNotice(undefined)
+        try {
+            await api.delete(`/products/${product.id}`)
+            removeFromLists(product.id)
+            setNotice({ type: "ok", text: `Se eliminó "${product.nombre}".` })
+        } catch (error) {
+            const code = axios.isAxiosError(error) ? error.response?.data?.errorCode : undefined
+            // Con órdenes no se puede borrar: ofrecemos ocultarlo de la tienda
+            if (code === "PRODUCT_HAS_ORDERS" && product.active &&
+                confirm(`${errorMessage(error)}\n\n¿Querés ocultarlo de la tienda?`)) {
+                try {
+                    await api.patch("/products", { id: product.id, active: false })
+                    removeFromLists(product.id)
+                    setNotice({ type: "ok", text: `"${product.nombre}" quedó oculto de la tienda (pestaña "Ocultos / sin stock").` })
+                } catch (err) {
+                    setNotice({ type: "error", text: errorMessage(err, "No se pudo ocultar el producto") })
+                }
+            } else {
+                setNotice({ type: "error", text: errorMessage(error, "No se pudo eliminar el producto") })
+            }
+        } finally {
+            setDeletingId("")
         }
-    }, [search])
+    }
 
-    useEffect(() => {
-        document.body.style.overflow = modal ? "hidden" : "";
+    const goToPage = (next: number) => {
+        scrollAfterLoad.current = true
+        setPage(next)
+    }
 
-        return () => {
-            document.body.style.overflow = "";
-        };
-    }, [modal]);
-
-    const formatPrice = (value: number | string) =>
-        new Intl.NumberFormat("es-AR", {
-            style: "currency",
-            currency: "ARS",
-            maximumFractionDigits: 0,
-        }).format(Number(value));
+    const term = search.trim().toLowerCase()
+    const visibleProducts = term
+        ? allProducts?.filter(p => p.nombre.toLowerCase().includes(term))
+        : products
 
     return (
-        <>
-            <div style={{ justifyItems: "start", padding: "20px" }}>
-                <p id="init" style={{ color: "#be554b", fontWeight: "bold" }}>Gestión de los productos de Mona Studio</p>
-                <p style={{ color: "#be554b", fontWeight: "bold", textAlign: "start", marginTop: "10px" }}>Antes de crear o modificar un producto, se debe tener registrado la variedad o categoría del mismo</p>
-                <form className={style.search} onSubmit={(e) => {
-                    e.preventDefault()
-                    searchProduct()
-                }}>
-                    <p>Buscar producto: </p>
-                    <input onChange={(e) => setSearch(e.target.value)}></input>
-                    <button>🔍</button>
-                </form>
-                <div className={style.tableContainer}>
-                    <table className={style.table}>
-                        <thead className={style.head}>
-                            <tr>
-                                <th className={style.productHeader}>
-                                    <div className={style.addButtons}>
-                                        <p>Producto</p>
-                                        <button
-                                            className={style.save}
-                                            onClick={() => setModal({
-                                                create: true,
-                                                id: crypto.randomUUID(),
-                                                active: true,
-                                                categories: [],
-                                                description: "",
-                                                nombre: "",
-                                                price: "0",
-                                                productVarities: [],
-                                                stock: 0,
-                                                images: [],
-                                                discountedPrice: "0",
-                                                createdAt: "",
-                                                updatedAt: ""
-                                            })}
-                                        >
-                                            Agregar producto
-                                        </button>
-                                        <button
-                                            className={style.save}
-                                            onClick={() => { setModalVarity(prev => !prev) }}
-                                        >
-                                            Agregar variedad
-                                        </button>
-                                        <button
-                                            className={style.save}
-                                            onClick={() => { setModalCategory(prev => !prev) }}
-                                        >
-                                            Agregar categoría
-                                        </button>
-                                    </div>
-                                </th>
-                                <th style={{ textAlign: "center" }}>Precio</th>
-                                <th style={{ textAlign: "center" }}>Stock</th>
-                                <th style={{ textAlign: "center" }}>Categoría</th>
-                            </tr>
-                        </thead>
+        <div className={style.page}>
+            <div className={style.intro}>
+                <h1 className={style.title}>Productos</h1>
+                <p className={style.subtitle}>
+                    Antes de crear o modificar un producto, tenés que tener registradas sus variedades y categorías
+                    en <Link to="/catalog">Categorías y variedades</Link>.
+                </p>
+            </div>
 
-                        <tbody>
-                            {copyProducts?.length ? copyProducts?.map((product) => (
-                                <tr key={product.id} className={style.cell} onClick={() => {
-                                    console.log(product)
-                                    setModal(product)
-                                }}>
-                                    <td>
-                                        <div className={style.product}>
-                                            <img
-                                                src={product.images && product.images[0]?.url}
-                                                alt={product.nombre}
-                                            />
-                                            <p>{product.nombre}</p>
-                                        </div>
-                                    </td>
+            <div className={style.tabs} role="tablist">
+                <button role="tab" aria-selected={tab === "inCatalog"} onClick={() => changeTab("inCatalog")}>
+                    En la tienda
+                </button>
+                <button role="tab" aria-selected={tab === "outCatalog"} onClick={() => changeTab("outCatalog")}>
+                    Ocultos / sin stock
+                </button>
+            </div>
 
-                                    <td>
-                                        <div className={style.prices}>
-                                            <p>
-                                                <span>Original:</span>
-                                                {formatPrice(product.price)}
-                                            </p>
-                                            <p>
-                                                <span>Descuento:</span>
-                                                {formatPrice(product.discountedPrice || 0)}
-                                            </p>
-                                        </div>
-                                    </td>
+            <div className={style.toolbar} ref={listTop}>
+                <input
+                    className={style.searchInput}
+                    type="search"
+                    value={search}
+                    onFocus={loadAllProducts}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Buscar producto por nombre…"
+                    aria-label="Buscar producto"
+                />
+                <Link className={style.addButton} to="/products/new">
+                    + Agregar producto o promoción
+                </Link>
+            </div>
 
-                                    <td>
-                                        <span className={style.stock}>
-                                            {product.stock} unidades
-                                        </span>
-                                    </td>
+            {notice && <p className={notice.type === "ok" ? style.noticeOk : style.noticeError} role="status">
+                {notice.text}
+                <button type="button" aria-label="Cerrar aviso" onClick={() => setNotice(undefined)}>×</button>
+            </p>}
 
-                                    <td>
-                                        <div className={style.categories}>
-                                            {product.categories?.map((cat) => (
-                                                <span key={cat.id} className={style.category}>
-                                                    {cat.name}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))
-                                :
-                                <td style={{ textAlign: "center", color: "#be554b", fontWeight: "bold" }}>No se encontraron productos con ese nombre</td>
-                            }
-                        </tbody>
-                    </table>
+            {term && <p className={style.resultInfo}>
+                {visibleProducts?.length ?? 0} resultado{visibleProducts?.length === 1 ? "" : "s"} para “{search.trim()}”
+                <button onClick={() => setSearch("")}>Limpiar</button>
+            </p>}
+
+            <div className={style.list} aria-busy={loadingList}>
+                <div className={style.listHeader}>
+                    <span>Producto</span>
+                    <span>Precio</span>
+                    <span>Stock</span>
+                    <span>Categorías</span>
+                    <span className={style.srOnly}>Acciones</span>
                 </div>
+                {visibleProducts?.length ? visibleProducts.map((product) => (
+                    <div key={product.id} className={style.row} aria-busy={deletingId === product.id}>
+                        <span className={style.product}>
+                            {product.images?.[0]?.url
+                                ? <img src={product.images[0].url} alt="" />
+                                : <span className={style.noImage} aria-hidden="true">Sin foto</span>}
+                            {/* El link cubre toda la fila (ver .rowLink::after) */}
+                            <Link to={`/products/${product.id}`} className={style.rowLink}>{product.nombre}</Link>
+                        </span>
+                        <span className={style.prices}>
+                            {Number(product.discountedPrice) > 0 ? <>
+                                <span className={style.oldPrice}>{formatPrice(product.price)}</span>
+                                <span className={style.price}>{formatPrice(product.discountedPrice || 0)}</span>
+                            </> :
+                                <span className={style.price}>{formatPrice(product.price)}</span>
+                            }
+                        </span>
+                        <span className={style.stockCell}>
+                            <span className={`${style.stock} ${!product.stock ? style.noStock : ""}`}>
+                                {product.stock ?? 0} u.
+                            </span>
+                        </span>
+                        <span className={style.chips}>
+                            {product.categories?.map((cat) => (
+                                <span key={cat.id} className={style.category}>{cat.name}</span>
+                            ))}
+                        </span>
+                        <span className={style.rowActions}>
+                            <button
+                                type="button"
+                                className={style.deleteButton}
+                                disabled={deletingId === product.id}
+                                onClick={() => deleteProduct(product)}
+                                aria-label={`Eliminar ${product.nombre}`}
+                                title="Eliminar producto"
+                            >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                    <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6m6 5v6m4-6v6" />
+                                </svg>
+                                <span className={style.deleteLabel}>Eliminar</span>
+                            </button>
+                        </span>
+                    </div>
+                ))
+                    :
+                    <p className={style.empty}>
+                        {loadingList || (term && !allProducts) || !visibleProducts
+                            ? "Cargando…"
+                            : term ? "No se encontraron productos con ese nombre"
+                                : tab === "inCatalog" ? "Todavía no hay productos en la tienda" : "No hay productos ocultos"}
+                    </p>
+                }
+            </div>
+
+            {!term &&
                 <div className={style.pagination}>
-                    <button disabled={page == "1"} onClick={() => {
-                        setNextDisabled(false)
-                        setPage((prev) => String(Number(prev) - 1))
-                    }}>{"<"}</button>
-                    <button disabled={nextDisable} onClick={() => setPage((prev) => String(Number(prev) + 1))}>{">"}</button>
-                </div>
-            </div>
-
-            {(modalVarity || modalCategory) &&
-                <div className={style.modal}>
-                    <form className={style.modalContainer} onSubmit={async (e) => {
-                        e.preventDefault()
-                        const data = new FormData(e.currentTarget)
-                        const name = data.get("varity")
-                        try {
-                            if (modalVarity) {
-                                await api.post("/varities", { name })
-                                setModalVarity(false)
-                            }
-                            if (modalCategory) {
-                                await api.post("/categories", { name })
-                                setModalCategory(false)
-                            }
-                        } catch (error) {
-                            setModalCategory(false)
-                            setModalVarity(false)
-                        }
-                    }}>
-                        <label style={{ display: "flex", gap: "5px" }}>
-                            Nombre de la {modalCategory ? "categoría" : "variedad"}
-                            <input name="varity"></input>
-                        </label>
-                        <button className={style.delete} type="button" onClick={() => {
-                            modalCategory ? setModalCategory(false) : setModalVarity(false)
-                        }}>Cancelar</button>
-                        <button className={style.save}>Crear {modalCategory ? "categoría" : "variedad"}</button>
-                    </form>
+                    <button disabled={page === 1 || loadingList} onClick={() => goToPage(page - 1)}>‹ Anterior</button>
+                    <span>Página {page}</span>
+                    <button disabled={!hasNext || loadingList} onClick={() => goToPage(page + 1)}>Siguiente ›</button>
                 </div>
             }
-            {modal && <div className={style.modal}>
-                <div className={style.modalContainer}>
-                    <label>
-                        Nombre:
-                        <input
-                            defaultValue={modal.nombre || ""}
-                            onChange={(e) => {
-                                setModal(prev => {
-                                    if (!prev) return prev
-                                    return {
-                                        ...prev,
-                                        nombre: e.target.value
-                                    }
-                                })
-                            }}
-                        ></input>
-                    </label>
-                    <label>
-                        Precio:
-                        <input
-                            defaultValue={modal.price || ""}
-                            onChange={(e) => {
-                                setModal(prev => {
-                                    if (!prev) return prev
-                                    return {
-                                        ...prev,
-                                        price: e.target.value
-                                    }
-                                })
-                            }}
-                        ></input>
-                    </label>
-                    <label>
-                        Precio de descuento:
-                        <input
-                            defaultValue={modal.discountedPrice || ""}
-                            onChange={(e) => {
-                                setModal(prev => {
-                                    if (!prev) return prev
-                                    return {
-                                        ...prev,
-                                        discountedPrice: e.target.value
-                                    }
-                                })
-                            }}
-                        ></input>
-                    </label>
-                    <label>
-                        Descripción:
-                        <textarea
-                            defaultValue={modal.description || ""}
-                            onChange={(e) => {
-                                setModal(prev => {
-                                    if (!prev) return prev
-                                    return {
-                                        ...prev,
-                                        description: e.target.value
-                                    }
-                                })
-                            }}
-                        ></textarea>
-                    </label>
-
-                    {/* ---- IMAGENES ---- */}
-                    <div className={style.modalImages}>
-                        <p>Imagens</p>
-                        <p>Se recomienda que las imagenes estén en formato <b>WEBP</b></p>
-                        <div className={style.images}>
-                            {modal.images && modal.images?.map(image => (
-                                <div>
-                                    <img src={image.url} />
-                                    <button onClick={() => {
-                                        setModal(prev => {
-                                            if (!prev) return prev
-                                            return {
-                                                ...prev,
-                                                images: prev.images?.filter(img => img.id != image.id)
-                                            }
-                                        })
-                                    }}>X</button>
-                                </div>
-                            ))}
-                        </div>
-                        <input type="file" accept="image/*" onChange={(e) => {
-                            const file = e.target.files?.[0]
-                            if (!file) return
-                            const url = URL.createObjectURL(file)
-                            setNewImages(prev => {
-                                if (!prev) return prev
-                                return [...prev, file]
-                            })
-                            setModal(prev => {
-                                if (!prev) return prev
-
-                                return {
-                                    ...prev,
-                                    images: prev.images ? [
-                                        ...prev?.images,
-                                        {
-                                            id: crypto.randomUUID(),
-                                            productId: prev?.id,
-                                            url: url
-                                        }
-                                    ] : [
-                                        {
-                                            id: crypto.randomUUID(),
-                                            productId: prev?.id,
-                                            url: url
-                                        }
-                                    ]
-                                }
-                            })
-                        }}></input>
-                    </div>
-
-
-
-                    {/* ------------------ VARIEDADES ------------------ */}
-                    <div className={style.modalVaritiesContainer}>
-                        <label>
-                            Stock {"(se calcula solo si se agregan variedades)"}:
-                            <input
-                                disabled={modal.productVarities.length > 0}
-                                defaultValue={modal.stock}
-                                onChange={(e) => {
-                                    setModal(prev => {
-                                        if (!prev) return prev
-                                        return {
-                                            ...prev,
-                                            stock: Number(e.target.value)
-                                        }
-                                    })
-                                }}
-                            >
-                            </input>
-                        </label>
-                        <p>Variedades {"(opcional)"}</p>
-                        <div className={style.varities}>
-                            {modal.productVarities?.map(varity => (
-                                <div style={{ display: "flex" }} key={varity.id}>
-                                    <div className={style.varity}>
-                                        <label>
-                                            Nombre:
-                                            <input defaultValue={varity.varity?.name}></input>
-                                        </label>
-                                        <label>
-                                            Stock:
-                                            <input defaultValue={varity.stock} onChange={(e) => {
-                                                const newStock = Number(e.target.value)
-                                                setModal((prev) => {
-                                                    if (!prev) return prev
-                                                    const varities = prev.productVarities.map((element) =>
-                                                        element.id != varity.id ? element : { ...varity, stock: newStock })
-                                                    return {
-                                                        ...prev,
-                                                        productVarities: varities
-                                                    }
-                                                })
-                                            }}></input>
-                                        </label>
-                                        <button
-                                            className={style.delete}
-                                            onClick={() => {
-                                                console.log(varity.id)
-                                                setModal(prev => {
-                                                    if (!prev) return prev
-                                                    return {
-                                                        ...prev,
-                                                        productVarities: prev.productVarities.filter(element => element.id != varity.id)
-                                                    }
-                                                })
-                                            }}>
-                                            Eliminar
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                            <div>
-                                <div className={style.varity}>
-                                    <label>
-                                        Nombre:
-                                        <select defaultValue={""} onChange={(e) => setNewVarity(prev => ({ ...prev, id: e.target.value }))}>
-                                            <option></option>
-                                            {varities?.map((varity) => <option value={varity.id}>{varity.name}</option>)}
-                                        </select>
-                                    </label>
-                                    <label>
-                                        Stock:
-                                        <input defaultValue="" onChange={(e) => setNewVarity(prev => ({ ...prev, stock: Number(e.target.value) }))}></input>
-                                    </label>
-                                    <button
-                                        className={style.save}
-                                        style={{ paddingBlock: "0px" }}
-                                        disabled={!newVarity.id || !newVarity.stock}
-                                        onClick={() => {
-                                            setModal(prev => {
-                                                if (!prev) return prev
-                                                return {
-                                                    ...prev,
-                                                    productVarities: [
-                                                        ...prev.productVarities,
-                                                        {
-                                                            active: true,
-                                                            id: newVarity.id,
-                                                            stock: newVarity.stock,
-                                                            varity: {
-                                                                id: newVarity.id,
-                                                                name: varities?.find(element => element.id == newVarity.id)?.name || ""
-                                                            }
-                                                        }
-                                                    ]
-                                                }
-                                            })
-                                            setNewVarity({
-                                                id: "",
-                                                stock: 0
-                                            })
-                                        }}
-                                    >
-                                        Agregar
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-
-
-                    {/* ------------------ CATEGORÍAS ------------------ */}
-                    <div className={style.categories}>
-                        <p>Categorías <b>{"(vaya eligiendo para ir agregando la categoría)"}</b></p>
-                        <select onChange={(e) => {
-                            setModal(prev => {
-                                if (!prev) return prev
-                                const categorySelected = e.target.value
-                                return {
-                                    ...prev,
-                                    categories: [
-                                        ...prev.categories,
-                                        {
-                                            active: true,
-                                            id: categorySelected,
-                                            name: categories?.find(c => c.id == categorySelected)?.name || ""
-                                        }
-                                    ]
-                                }
-                            })
-                        }}>
-                            <option></option>
-                            {categories?.map(category => <option value={category.id} id={category.id}>{category.name}</option>)}
-                        </select>
-                        <div>
-                            {modal.categories.map(category => (
-                                <div className={style.modalCategory}>
-                                    <p>{category.name}</p>
-                                    <button onClick={() => {
-                                        setModal(prev => {
-                                            if (!prev) return prev
-                                            return {
-                                                ...prev,
-                                                categories: prev.categories?.filter(cat => cat.id != category.id)
-                                            }
-                                        })
-                                    }}>X</button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                    <button className={style.delete} style={{ paddingBlock: "7px", fontSize: "17px" }} onClick={() => setModal(undefined)}>Cancelar</button>
-                    {!loader ?
-                        !modal.create ?
-                            <button
-                                className={style.save}
-                                onClick={async () => {
-                                    setLoader("Guardando cambios")
-                                    const {
-                                        active,
-                                        images,
-                                        productVarities,
-                                        createdAt,
-                                        updatedAt,
-                                        ...data
-                                    } = modal
-                                    try {
-                                        const imagesProduct = modal.images?.filter(e => e.url.includes("firebasestorage")).map(e => e.url)
-                                        if (newImages?.length)
-                                            for (const image of newImages) {
-                                                const storageRef = ref(
-                                                    storage,
-                                                    `Productos/${image.name}`
-                                                )
-
-                                                await uploadBytes(storageRef, image, { contentType: image.type })
-
-                                                const url = await getDownloadURL(storageRef)
-                                                imagesProduct?.push(url)
-                                            }
-                                        const patch = await api.patch("products", {
-                                            ...data,
-                                            price: Number(data.price),
-                                            discountedPrice: Number(data.discountedPrice),
-                                            image: imagesProduct,
-                                            varities: modal.productVarities.map(varity => ({ id: varity.varity?.id, productVarityId: varity.id, stock: varity.stock, active: varity.active }))
-                                        })
-                                        const productUpdate = await api.get(`products/byName/${patch.data.nombre}`)
-                                        if (productUpdate.data) {
-                                            setCopyProducts(prev => {
-                                                if (!prev) return prev
-                                                return prev?.map(product => product.id == patch.data.id ? productUpdate.data[0] : product)
-                                            })
-                                            setModal(undefined)
-                                            setLoader("")
-                                        }
-                                    } catch (error) {
-                                        setLoader("")
-                                    }
-                                }}
-                            >
-                                Guardar cambios
-                            </button>
-                            :
-                            <button
-                                className={style.save}
-                                onClick={async () => {
-                                    setLoader("Creando producto")
-                                    const {
-                                        id,
-                                        create,
-                                        active,
-                                        images,
-                                        productVarities,
-                                        createdAt,
-                                        updatedAt,
-                                        ...data
-                                    } = modal
-                                    try {
-                                        const imagesProduct = modal.images?.filter(e => e.url.includes("firebasestorage")).map(e => e.url)
-                                        if (newImages?.length)
-                                            for (const image of newImages) {
-                                                const storageRef = ref(
-                                                    storage,
-                                                    `Productos/${image.name}`
-                                                )
-
-                                                await uploadBytes(storageRef, image, { contentType: image.type })
-
-                                                const url = await getDownloadURL(storageRef)
-                                                imagesProduct?.push(url)
-                                            }
-                                        await api.post("products", {
-                                            ...data,
-                                            price: Number(data.price),
-                                            discountedPrice: Number(data.discountedPrice),
-                                            image: imagesProduct,
-                                            varities: modal.productVarities.map(varity => ({ id: varity.varity?.id, productVarityId: varity.id, stock: varity.stock, active: varity.active }))
-                                        })
-                                        const products = await api.get(`/products??orderBy=createdAt&page=${page}`)
-                                        if (products.data.length > 0) {
-                                            setProducts(products.data)
-                                            setCopyProducts(products.data)
-                                        }
-                                        setModal(undefined)
-                                        setLoader("")
-                                    } catch (error) {
-                                        setLoader("")
-                                    }
-                                }}
-                            >
-                                Crear producto
-                            </button>
-                        :
-                        <button>
-                            {loader}
-                            <span className={style.dots}></span>
-                        </button>
-                    }
-                </div>
-            </div>
-            }
-        </>
+        </div>
     )
 }
